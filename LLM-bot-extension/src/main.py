@@ -8,6 +8,7 @@ from torch import cuda
 from uuid import uuid4
 from pydantic import BaseModel
 
+import requests
 import time
 
 device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
@@ -134,12 +135,15 @@ def test_generate():
 @app.get("/pr-infos")
 async def get_pr_infos():
 
+    # modifier le token, le nom du repo et le nombre de prs qu'on veut recueillir
+    # exemple ici avec le repo tinygrad
+
     GRAPHQL_API_URL = 'https://api.github.com/graphql'
-    HEADERS = {'Authorization': f'Bearer "GITHUB_ACCESS_TOKEN"'}
+    HEADERS = {'Authorization': f'Bearer GITHUB_TOKEN'}
 
     query = f"""
-        query {{}
-            search(type: ISSUE, query: "repo:tinygrad/tinygrad is:pr", first: 100) {{
+        query {{
+            search(type: ISSUE, query: "repo:tinygrad/tinygrad is:pr", first: 10) {{ 
                 nodes {{
                 ... on PullRequest {{
                     id
@@ -147,24 +151,19 @@ async def get_pr_infos():
                     url
                     mergedAt
                     createdAt
+                    closedAt
                     number
                 }}
                 }}
-            }]
+            }}
         }}
     """
-
-    if resp.status_code == 200:
-        data = await resp.json()
-        org_name = data['data']['organization']['name']
-        project_title = data['data']['organization']['projectV2']['title']
+    response = requests.post(GRAPHQL_API_URL, json={"query": query}, headers=HEADERS)
+    if response.ok:
+        data = response.json()
         prs = []
-        for repo in data['data']['organization']['projectV2']['repositories']['nodes']:
-            for pr in repo['pullRequests']['nodes']:
-                prs.append((pr['id'], pr['title'], pr['createdAt'], pr['closedAt']))
-        return {"data": {"organization": org_name, "project": project_title, "prs": prs}}
+        for pr in data['data']['search']['nodes']:
+            prs.append((pr['id'], pr['title'], pr['mergedAt'], pr['createdAt'], pr['closedAt'], pr['number']))
+        return {"data": prs}
     else:
-        raise RuntimeError(f"GraphQL API returned status code {resp.status_code}: {await resp.text()}")
-
-
-    print("pr infos!")
+        raise RuntimeError(f"Query failed to run by returning code of {response.status_code}.")
