@@ -130,3 +130,41 @@ def test_generate():
     print(tokenizer.decode(output))
     print('--- %s secondes ---' % (time.time() - start_time))
     return {"result": tokenizer.decode(output)}
+
+@app.get("/pr-infos")
+async def get_pr_infos():
+
+    GRAPHQL_API_URL = 'https://api.github.com/graphql'
+    HEADERS = {'Authorization': f'Bearer "GITHUB_ACCESS_TOKEN"'}
+
+    query = f"""
+        query {{}
+            search(type: ISSUE, query: "repo:tinygrad/tinygrad is:pr", first: 100) {{
+                nodes {{
+                ... on PullRequest {{
+                    id
+                    title
+                    url
+                    mergedAt
+                    createdAt
+                    number
+                }}
+                }}
+            }]
+        }}
+    """
+
+    if resp.status_code == 200:
+        data = await resp.json()
+        org_name = data['data']['organization']['name']
+        project_title = data['data']['organization']['projectV2']['title']
+        prs = []
+        for repo in data['data']['organization']['projectV2']['repositories']['nodes']:
+            for pr in repo['pullRequests']['nodes']:
+                prs.append((pr['id'], pr['title'], pr['createdAt'], pr['closedAt']))
+        return {"data": {"organization": org_name, "project": project_title, "prs": prs}}
+    else:
+        raise RuntimeError(f"GraphQL API returned status code {resp.status_code}: {await resp.text()}")
+
+
+    print("pr infos!")
