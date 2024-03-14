@@ -168,3 +168,41 @@ async def get_pr_infos():
         return {"data": prs}
     else:
         raise RuntimeError(f"Query failed to run by returning code of {response.status_code}.")
+    
+class PromptMessage(BaseModel):
+    prompt: str
+    num_tokens: int
+
+# To faciliate testing, here's an endpoint to test the LLM included.
+# JSON Format should be 
+# {
+#   "prompt": "scenario template",
+#   "num_tokens": 200 or the value you want
+# }
+# Here's a few scenarios exemple: https://docs.google.com/document/d/1OKnzy3pTW6oRd3671XEzIRW34GuDjbHlaVjotqIt6yA/edit
+# If you are having trouble formatting the json, paste the scenario into the template and ask ChatGPT ;)
+@app.post("/generate-prompt")
+def message_generate(request: PromptMessage):
+    # Ensure the tokenizer and model are already loaded
+    if tokenizer == "" or model == "":
+        raise HTTPException(status_code=503, detail="Model is not loaded")
+
+    start_time = time.time()
+    user_prompt = request.prompt.strip()
+    prompt = f"<s>[INST] {user_prompt} [/INST]"
+
+    # Prepare the prompt for the model
+    inputs = tokenizer(prompt, return_tensors="pt", add_special_tokens=False).to(device)
+
+    # Generate the response using the specified number of tokens
+    output = model.generate(
+        **inputs,
+        max_new_tokens=request.num_tokens,  # Use the specified number of tokens
+        eos_token_id=int(tokenizer.convert_tokens_to_ids('.'))
+    )
+    output = output[0].to(device)
+
+    generated_text = tokenizer.decode(output)
+
+    print(f"--- {(time.time() - start_time)} seconds ---")
+    return {"result": generated_text}
