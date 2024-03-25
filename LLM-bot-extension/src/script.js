@@ -272,8 +272,6 @@ function attachIconEvent(icon){
 
                     var res = response.result.toString();
                     var splitText = res.split('INST]');
-                    //to remove
-                    console.log(res);
 
                     saveLLMResponse(splitText[splitText.length-1]);
 
@@ -727,13 +725,42 @@ async function getPullRequestComments() {
             }
             const data = await response.json(); 
             const comments = data.map(async comment => {
-                return comment.body;
+                // Prendre le commentaire si ce n'est pas github actions
+                if (comment.user.login != "github-actions[bot]") {
+                    return comment.body;
+                }
             });
             return Promise.all(comments);
         } catch (error) {
+            console.log(error);
         }
-    }else{
+    } else {
         alert("No Personal access token detected!")
+    }
+}
+
+// Get comments from a pull request review
+async function getPullRequestReviewComments(reviewId) {
+    if (token) {
+        try {
+            var urlInfo = getInfoFromURL();
+            const url = `https://api.github.com/repos/${urlInfo.owner}/${urlInfo.repo}/pulls/${urlInfo.pullNumber}/comments`;
+            const response = await fetch(url, { headers: headers });
+            if (!response.ok) {
+                throw new Error(`Error : ${response.status}`);
+            }
+            const data = await response.json();
+            const comments = data.map(async comment => {
+                if (review.pull_request_review_id == reviewId) {
+                    return review.body
+                }
+            });
+            return Promise.all(reviews);
+        } catch (error) {
+            console.log(error);
+        }
+    } else {
+        alert("No Personal access token detected!");
     }
 }
 
