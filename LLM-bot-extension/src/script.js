@@ -643,6 +643,7 @@ async function addReformToggle() {
         console.log("Error:", message);
     }
 
+    
     toggle.type = "checkbox";
     toggle.id = "toggleReform";
 
@@ -666,6 +667,19 @@ async function addReformToggle() {
         });
     }
 }
+
+// asdjsnajncvjnakcasnjcnjasnc
+
+
+
+// dksancnsanjcnsajncjasnjcjsancjsa
+
+
+
+
+
+
+// nsjdnjasndjsandjandjansjdnasj
 
 // Add enable/disable toggle
 async function addStatusToggle() {
